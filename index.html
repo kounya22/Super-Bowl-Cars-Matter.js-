@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Super Bowl & Cars (Matter.js)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+
+<canvas id="world"></canvas>
+
+<script>
+const {
+    Engine, Render, Runner,
+    Bodies, Body, Composite,
+    Composites, Events
+} = Matter;
+
+// 物理エンジン
+const engine = Engine.create();
+engine.gravity.y = 1;
+
+// 描画
+const render = Render.create({
+    canvas: document.getElementById("world"),
+    engine: engine,
+    options: {
+        width: 5000,
+        height: 2000,
+        wireframes: false,
+        background: "#024"
+    }
+});
+Render.run(render);
+Runner.run(Runner.create(), engine);
+
+// ───────────────────────────
+// 🧱 ステージ（端に壁を追加）
+// ───────────────────────────
+const ground = Bodies.rectangle(450, 2000, 1500000, 50, {
+    isStatic: true,
+    render: { fillStyle: "#0000" }
+});
+
+const ground2 = Bodies.rectangle(450, 10, 1500000, 50, {
+    isStatic: true,
+    render: { fillStyle: "#444" }
+});
+
+// 左壁・右壁（とても高くして落ちないように）
+const leftWall = Bodies.rectangle(-10, 2000, 20, 5500000, {
+    isStatic: true,
+    render: { fillStyle: "#666" }
+});
+
+const rightWall = Bodies.rectangle(5010, 2000, 40, 5500000, {
+    isStatic: true,
+    render: { fillStyle: "#666" }
+});
+
+Composite.add(engine.world, [ground, leftWall, rightWall]);
+
+const spinner = Bodies.rectangle(6000, 450, 200, 200, {
+    isStatic: true,
+    render: { fillStyle: "#00ccff" }
+});
+Composite.add(engine.world, spinner);
+
+// 回し続ける
+Events.on(engine, "beforeUpdate", () => {
+    Body.rotate(spinner, -0.1); // 0.05ラジアンずつ回転
+});
+
+const slope = Bodies.rectangle(1000, 2500, 300, 20, {
+    isStatic: false,
+    angle: Math.PI * -0.20, // -0.20 ラジアン（少し右上がり）
+    render: { fillStyle: "#666" }
+});
+
+function spawnRocks(amount) {
+    for (let i = 0; i < amount; i++) {
+        const x = 300 + Math.random() * 6000;  // 広い範囲に散らばせる
+        const y = 200 + Math.random() * 100;   // 重ならないようにランダム
+
+        const r = 20 + Math.random() * 10;     // 大きさもランダム
+
+        const rock = Bodies.circle(x, y, r, {
+            density: 0.001,
+            friction: 0.8,
+            restitution: 2, // 跳ねすぎ!!
+            render: {
+                fillStyle: "#22"
+            }
+        });
+
+        Composite.add(engine.world, rock);
+    }
+}
+
+// 岩を150個生成
+spawnRocks(150);
+
+function spawncircle(amount) {
+    for (let i = 0; i < amount; i++) {
+        const x = 300 + Math.random() * 6000;  // 広い範囲に散らばせる
+        const y = 200 + Math.random() * 100;   // 重ならないようにランダム
+
+        const r = 20 + Math.random() * 10;     // 大きさもランダム
+
+        const rock = Bodies.circle(x, y, r, {
+            density: 0.001,
+            friction: 0.8,
+            restitution: 2, // 跳ねすぎ!!!
+            render: {
+                fillStyle: "#22"
+            }
+        });
+
+        Composite.add(engine.world, rock);
+    }
+}
+
+// 岩を150個生成
+spawncircle(150);
+//───────────
+// 🚗 スポーツカー本体
+// ───────────────────────────
+
+// 車体（低くて長いスポーツカーっぽい形）
+const carBody = Bodies.rectangle(200, 500, 140, 30, {
+    render: {
+        fillStyle: "#ff3333",  // 赤いスポーツカー
+        strokeStyle: "#aa0000",
+        lineWidth: 3
+    }
+});
+
+// ガラス
+const glass = Bodies.rectangle(200, 485, 60, 15, {
+    render: {
+        fillStyle: "#77ccff",
+        strokeStyle: "#005577",
+        lineWidth: 2
+    }
+});
+
+// タイヤ（前後）
+const wheelA = Bodies.circle(160, 520, 20, {
+    render: { fillStyle: "black" }
+});
+
+const wheelB = Bodies.circle(240, 520, 20, {
+    render: { fillStyle: "black" }
+});
+
+// 車を一つの Composite にまとめる
+const car = Composite.create();
+Composite.add(car, [carBody, glass, wheelA, wheelB]);
+
+// 車体とガラスを固定（くっつける）
+const c1 = Matter.Constraint.create({
+    bodyA: carBody,
+    bodyB: glass,
+    stiffness: 1,
+    render: { visible: false }
+});
+Composite.add(car, c1);
+
+// タイヤをくっつける（サスペンション）
+Composite.add(car, Matter.Constraint.create({
+    bodyA: carBody,
+    bodyB: wheelA,
+    pointA: { x: -50, y: 15 },
+    stiffness: 0.3,
+    render: { visible: false }
+}));
+
+Composite.add(car, Matter.Constraint.create({
+    bodyA: carBody,
+    bodyB: wheelB,
+    pointA: { x: 50, y: 15 },
+    stiffness: 0.3,
+    render: { visible: false }
+}));
+
+Composite.add(engine.world, car);
+
+// ───────────────────────────
+// 🚗🚗 NPC車（自動運転車）を追加する場所
+// ───────────────────────────
+
+// NPC車を作る関数
+function createNpcCar(x, y) {
+    const body = Bodies.rectangle(x, y, 120, 40, {
+        render: { fillStyle: "#ffaa00" },
+        frictionAir: 0.02
+    });
+
+    const wheelA = Bodies.circle(x - 40, y + 20, 20, { render: { fillStyle: "#333" } });
+    const wheelB = Bodies.circle(x + 40, y + 20, 20, { render: { fillStyle: "#333" } });
+
+    const axelA = Matter.Constraint.create({
+        bodyA: body,
+        bodyB: wheelA,
+        pointA: { x: -40, y: 20 },
+        stiffness: 0.6
+    });
+    const axelB = Matter.Constraint.create({
+        bodyA: body,
+        bodyB: wheelB,
+        pointA: { x: 40, y: 20 },
+        stiffness: 0.6
+    });
+
+    Composite.add(engine.world, [body, wheelA, wheelB, axelA, axelB]);
+
+    return { body, wheelA, wheelB };
+}
+
+// NPCのAI（ランダム行動）
+function npcBrain(npc) {
+    setInterval(() => {
+        const force = {
+            x: (Math.random() - 0.5) * 0.5,
+            y: 0
+        };
+        Body.applyForce(npc.body, npc.body.position, force);
+
+        // 少し回転させて不安定に
+        Body.setAngularVelocity(npc.body, (Math.random() - 0.5) * 0.01);
+
+    }, 300);
+}
+
+// NPCを1台出す
+const npc1 = createNpcCar(800, 500);
+npcBrain(npc1);
+
+const npc2 = createNpcCar(800, 50);
+npcBrain(npc2);
+
+const npc3 = createNpcCar(800, 50);
+npcBrain(npc3);
+
+const npc4 = createNpcCar(800, 50);
+npcBrain(npc4);
+
+const npc5 = createNpcCar(800, 500);
+npcBrain(npc1);
+
+const npc6 = createNpcCar(800, 50);
+npcBrain(npc2);
+
+const npc7 = createNpcCar(800, 50);
+npcBrain(npc3);
+
+const npc8 = createNpcCar(800, 50);
+npcBrain(npc4);
+// 必要なら複数追加
+// const npc2 = createNpcCar(1500, 500);
+// npcBrain(npc2);
+// ───────────────────────────
+// 🎮 操作（← → で加速）
+// ───────────────────────────
+let force = 0;
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight") force = 0.005;  // アクセル
+    if (e.key === "ArrowLeft")  force = -0.005; // バック
+});
+
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") force = 0;
+});
+
+// 毎フレームの更新（タイヤに力を加える）
+Events.on(engine, "beforeUpdate", () => {
+    Body.applyForce(wheelA, wheelA.position, { x: force, y: 0 });
+    Body.applyForce(wheelB, wheelB.position, { x: force, y: 0 });
+});
+</script>
+</body>
+</html>
