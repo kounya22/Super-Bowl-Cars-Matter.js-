@@ -26,9 +26,9 @@ const render = Render.create({
     engine: engine,
     options: {
         width: 5000,
-        height: 2000,
+        height: 3000,
         wireframes: false,
-        background: "#024"
+        background: "#027"
     }
 });
 Render.run(render);
@@ -37,23 +37,23 @@ Runner.run(Runner.create(), engine);
 // ───────────────────────────
 // 🧱 ステージ（端に壁を追加）
 // ───────────────────────────
-const ground = Bodies.rectangle(450, 2000, 1500000, 50, {
+const ground = Bodies.rectangle(450, 3010, 1500000, 100, {
     isStatic: true,
-    render: { fillStyle: "#0000" }
+    render: { fillStyle: "#444" }
 });
 
-const ground2 = Bodies.rectangle(450, 10, 1500000, 50, {
+const ground2 = Bodies.rectangle(450, 100, 1500000, 50, {
     isStatic: true,
     render: { fillStyle: "#444" }
 });
 
 // 左壁・右壁（とても高くして落ちないように）
-const leftWall = Bodies.rectangle(-10, 2000, 20, 5500000, {
+const leftWall = Bodies.rectangle(-10, 2000, 70, 5500000, {
     isStatic: true,
     render: { fillStyle: "#666" }
 });
 
-const rightWall = Bodies.rectangle(5010, 2000, 40, 5500000, {
+const rightWall = Bodies.rectangle(5010, 2000, 50, 5500000, {
     isStatic: true,
     render: { fillStyle: "#666" }
 });
@@ -82,7 +82,7 @@ function spawnRocks(amount) {
         const x = 300 + Math.random() * 6000;  // 広い範囲に散らばせる
         const y = 200 + Math.random() * 100;   // 重ならないようにランダム
 
-        const r = 20 + Math.random() * 10;     // 大きさもランダム
+        const r = 30 + Math.random() * 10;     // 大きさもランダム
 
         const rock = Bodies.circle(x, y, r, {
             density: 0.001,
@@ -97,7 +97,7 @@ function spawnRocks(amount) {
     }
 }
 
-// 岩を150個生成
+// スーパーボールを150個生成
 spawnRocks(150);
 
 function spawncircle(amount) {
@@ -105,7 +105,7 @@ function spawncircle(amount) {
         const x = 300 + Math.random() * 6000;  // 広い範囲に散らばせる
         const y = 200 + Math.random() * 100;   // 重ならないようにランダム
 
-        const r = 20 + Math.random() * 10;     // 大きさもランダム
+        const r = 30 + Math.random() * 10;     // 大きさもランダム
 
         const rock = Bodies.circle(x, y, r, {
             density: 0.001,
@@ -120,7 +120,7 @@ function spawncircle(amount) {
     }
 }
 
-// 岩を150個生成
+// スーパーボールを150個生成
 spawncircle(150);
 //───────────
 // 🚗 スポーツカー本体
@@ -221,7 +221,7 @@ function createNpcCar(x, y) {
 function npcBrain(npc) {
     setInterval(() => {
         const force = {
-            x: (Math.random() - 0.5) * 0.5,
+            x: (Math.random() - 0.5) * 100,
             y: 0
         };
         Body.applyForce(npc.body, npc.body.position, force);
@@ -265,8 +265,45 @@ npcBrain(npc4);
 let force = 0;
 
 document.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight") force = 0.005;  // アクセル
-    if (e.key === "ArrowLeft")  force = -0.005; // バック
+    if (e.key === "ArrowRight") force = 0.01;
+    if (e.key === "ArrowLeft")  force = -0.01;
+    if (e.key === "d") force = 0.05;
+    if (e.key === "a") force = -0.05;
+
+    // スペースでジャンプ（強め）
+    if (e.key === " ") {
+        Body.applyForce(carBody, carBody.position, { x: 0, y: -0.2 });
+    }
+        if (e.key === "ArrowDown") {
+        Body.applyForce(carBody, carBody.position, { x: 0, y: 0.3 });
+    }
+    // Rキーで車を初期位置にリセット
+if (e.key === "r" || e.key === "R") {
+    // 位置をリセット
+    Body.setPosition(carBody, { x: 200, y: 500 });
+    Body.setPosition(glass,   { x: 200, y: 485 });
+    Body.setPosition(wheelA,  { x: 160, y: 520 });
+    Body.setPosition(wheelB,  { x: 240, y: 520 });
+
+    // 角度をリセット
+    Body.setAngle(carBody, 0);
+    Body.setAngle(glass, 0);
+    Body.setAngle(wheelA, 0);
+    Body.setAngle(wheelB, 0);
+
+    // 速度も0にしないとぶっ飛んでいく
+    Body.setVelocity(carBody, { x: 0, y: 0 });
+    Body.setVelocity(glass,   { x: 0, y: 0 });
+    Body.setVelocity(wheelA,  { x: 0, y: 0 });
+    Body.setVelocity(wheelB,  { x: 0, y: 0 });
+
+    // 回転速度もリセット
+    Body.setAngularVelocity(carBody, 0);
+    Body.setAngularVelocity(glass, 0);
+    Body.setAngularVelocity(wheelA, 0);
+    Body.setAngularVelocity(wheelB, 0);
+}
+
 });
 
 document.addEventListener("keyup", e => {
@@ -278,6 +315,7 @@ Events.on(engine, "beforeUpdate", () => {
     Body.applyForce(wheelA, wheelA.position, { x: force, y: 0 });
     Body.applyForce(wheelB, wheelB.position, { x: force, y: 0 });
 });
+
 </script>
 </body>
 </html>
